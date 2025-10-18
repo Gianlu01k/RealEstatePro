@@ -23,28 +23,35 @@ class CustomAgentExecutor:
         )
 
     def invoke(self, input: str) -> Dict[str, Any]:
+        # invoke the agent but we do this iteratively in a loop until
+        # reaching a final answer
         count = 0
         agent_scratchpad = []
         tool_out = None
         
         while count < self.max_iterations:
+            # invoke a step for the agent to generate a tool call
             tool_call = self.agent.invoke({
                 "input": input,
                 "chat_history": self.chat_history,
                 "agent_scratchpad": agent_scratchpad
             })
+            # add initial tool call to scratchpad
             agent_scratchpad.append(tool_call)
-            
+
+            # Ensure we have valid tool calls
             if not getattr(tool_call, "tool_calls", []):
                 print(f"Warning: No tool calls in response at iteration {count}")
                 break
-                
+            # execute the tool and add its output to the agent scratchpad
             tool_name = tool_call.tool_calls[0]["name"]
             tool_args = tool_call.tool_calls[0]["args"]
             tool_call_id = tool_call.tool_calls[0]["id"]
             
+            # Use the instance's tool mapping
             tool_out = self.name2tool[tool_name](**tool_args)
             
+            # Ensure tool output is a dict with an 'answer' key
             if not isinstance(tool_out, dict) or "answer" not in tool_out:
                 print(f"Warning: Tool {tool_name} returned invalid output: {tool_out}")
                 tool_out = {"answer": str(tool_out)}
@@ -54,19 +61,22 @@ class CustomAgentExecutor:
                 tool_call_id=tool_call_id
             )
             agent_scratchpad.append(tool_exec)
-            
+
+            # Log the tool execution
             print(f"{count}: {tool_name}({tool_args})")
             count += 1
             
             if tool_name == "final_answer":
                 break
-        
+
+        # If no valid tool output, provide a default message
         if not tool_out or not isinstance(tool_out, dict) or "answer" not in tool_out:
             tool_out = {
                 "answer": "I apologize, but I wasn't able to complete the request successfully.",
                 "error": "No valid tool output generated"
             }
         
+        # Update chat history
         final_answer = tool_out["answer"]
         self.chat_history.extend([
             HumanMessage(content=input),
