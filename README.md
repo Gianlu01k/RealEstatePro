@@ -6,10 +6,11 @@ RealEstatePRO is an intelligent real estate search assistant that helps users fi
 
 - Natural language property search
 - Price analysis and averages by location
-- Nearby parks and amenities search
-- Geospatial distance calculations
+- Find nearby amenities (restaurants, shops, transit stations, etc.)
+- Calculate travel times between locations
 - Interactive Streamlit web interface
-- Vector similarity search for properties and parks
+- Vector similarity search for properties
+- Distance and travel time calculations
 
 ## Tech Stack
 
@@ -43,15 +44,12 @@ RealEstatePRO is an intelligent real estate search assistant that helps users fi
    - Calculate average property prices by location
    - Analyze market trends
 
-3. **Parks Search (`retrieve_parks`)**
-   - Find parks and recreational areas
-   - Get detailed park information
+3. **Places Near Location (`find_places_near_location`)**
+   - Find amenities near properties
+   - Search for specific types of places
+   - Get location details and addresses
 
-4. **Nearest Park Finder (`find_nearest_park_to_house`)**
-   - Calculate distances to nearby parks
-   - Find the closest park to any property
-
-5. **Travel Time Calculator (`calculate_travel_time`)**
+4. **Travel Time Calculator (`calculate_travel_time`)**
    - Calculate travel times between locations
    - Support for different transportation modes
 
@@ -63,13 +61,13 @@ RealEstatePRO is an intelligent real estate search assistant that helps users fi
 
 ```
 RealEstatePRO/
-├── app.py                 # Streamlit web application
-├── agent.py              # Custom LangChain agent implementation
-├── tools.py              # Tool definitions and implementations
+├── src/                  # Source code directory
+│   ├── app.py           # Streamlit web application
+│   ├── agent.py         # Custom LangChain agent implementation
+│   └── tools.py         # Tool definitions and implementations
 ├── main.ipynb           # Development notebook and data processing
 ├── requirements.txt      # Project dependencies
-├── faiss_index_dir/     # Property vector store
-└── faiss_index_dir_parks/# Parks vector store
+└── faiss_index_dir/     # Property vector store
 ```
 
 ## Setup Instructions
@@ -95,7 +93,9 @@ RealEstatePRO/
 
 4. **Run the Application**
    ```bash
-   streamlit run app.py
+   python main.py
+   # or
+   streamlit run src/app.py
    ```
 
 ## Using the Application

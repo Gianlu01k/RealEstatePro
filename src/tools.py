@@ -7,12 +7,8 @@ import geopandas as gpd
 import requests
 from shapely.geometry import Point
 import pandas as pd
-from shapely import wkt
 import os
 from langchain.tools import tool
-import requests
-import re
-
 
 
 @lru_cache()
@@ -81,38 +77,30 @@ def average_price(location: str) -> dict:
         "average": avg_price
     }
 
-
-
 @tool
 def find_places_near_location(query: str) -> dict:
     """
-    Given a user query like:
-    "Find grocery stores near the first house"
-    or
-    "Find subway stations near 40.7484, -73.9857"
-    this tool finds nearby places using Google Maps APIs.
+    Find nearby places using Google Maps APIs.
+    Example queries:
+    - "Find grocery stores near the first house"
+    - "Find subway stations near 40.7484, -73.9857"
     """
-
     api_key = os.environ.get("POSITION_API_KEY")
     if not api_key:
         return {"error": "Missing POSITION_API_KEY environment variable."}
 
-   # --- Parse query ---
     match = re.search(r'near\s+(.+)', query, re.IGNORECASE)
     if not match:
-        return {"error": "Please specify a location after 'near' (e.g. 'near Milan')."}
+        return {"error": "Please specify a location after 'near'."}
 
     location_from = match.group(1).strip()
     place_type_match = re.search(r'find\s+(.*?)\s+near', query, re.IGNORECASE)
     location_to = place_type_match.group(1).strip() if place_type_match else "point_of_interest"
 
-    # --- Determine if input is coordinates or text ---
     coord_match = re.match(r'^\s*(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)\s*$', location_from)
     if coord_match:
-        # Direct coordinates (no need to geocode)
         lat, lon = float(coord_match.group(1)), float(coord_match.group(2))
     else:
-        # Text address → geocode
         geocode_url = "https://maps.googleapis.com/maps/api/geocode/json"
         geocode_params = {"address": location_from, "key": api_key}
         geocode_response = requests.get(geocode_url, params=geocode_params).json()
@@ -123,7 +111,6 @@ def find_places_near_location(query: str) -> dict:
         location_coords = geocode_response["results"][0]["geometry"]["location"]
         lat, lon = location_coords["lat"], location_coords["lng"]
 
-    # --- Search nearby places ---
     places_url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
     places_params = {
         "location": f"{lat},{lon}",
@@ -155,34 +142,25 @@ def find_places_near_location(query: str) -> dict:
         "tools_used": ["find_places_near_location"]
     }
 
-
-
-from langchain.tools import tool
-import requests
-import os
-import re
-
 @tool
 def calculate_travel_time(query: str) -> dict:
     """
     Calculate travel time between two points using Google Distance Matrix API.
-    Expected input format examples:
+    Examples:
     - "travel time from 40.7128,-74.0060 to 40.7138,-74.0010 by walking"
     - "how long by driving from 159 Rivington St to Empire State Building"
     """
-
     api_key = os.environ.get("POSITION_API_KEY")
     if not api_key:
         return {"error": "Missing POSITION_API_KEY environment variable."}
 
-    # Extract origin, destination, and travel mode
     origin_match = re.search(r'from (.+?) to', query, re.IGNORECASE)
     destination_match = re.search(r'to (.+?)(?: by|$)', query, re.IGNORECASE)
     mode_match = re.search(r'by (walking|driving|transit|bicycling)', query, re.IGNORECASE)
 
     if not origin_match or not destination_match:
         return {
-            "answer": "Please provide a valid origin and destination (e.g., 'from X to Y').",
+            "answer": "Please provide a valid origin and destination.",
             "tools_used": ["calculate_travel_time"]
         }
 
@@ -190,7 +168,6 @@ def calculate_travel_time(query: str) -> dict:
     destination = destination_match.group(1).strip()
     mode = mode_match.group(1).strip() if mode_match else "driving"
 
-    # --- Helper: geocode address if needed ---
     def geocode_if_needed(location: str) -> str | None:
         coord_match = re.match(r'^\s*-?\d+\.\d+\s*,\s*-?\d+\.\d+\s*$', location)
         if coord_match:
@@ -211,7 +188,6 @@ def calculate_travel_time(query: str) -> dict:
         loc = results[0]["geometry"]["location"]
         return f"{loc['lat']},{loc['lng']}"
 
-    # --- Convert origin and destination to coordinates ---
     origin_coord = geocode_if_needed(origin)
     destination_coord = geocode_if_needed(destination)
 
@@ -221,7 +197,6 @@ def calculate_travel_time(query: str) -> dict:
             "tools_used": ["calculate_travel_time"]
         }
 
-    # --- Query Google Distance Matrix API ---
     dist_url = "https://maps.googleapis.com/maps/api/distancematrix/json"
     params = {
         "origins": origin_coord,
@@ -254,13 +229,7 @@ def calculate_travel_time(query: str) -> dict:
         "tools_used": ["calculate_travel_time"]
     }
 
-
-
 @tool
 def final_answer(answer: str, tools_used: list[str]) -> str:
-    """Use this tool to provide a final answer to the user.
-    The answer should be in natural language as this will be provided
-    to the user directly. The tools_used must include a list of tool
-    names that were used within the `scratchpad`.
-    """
+    """Use this tool to provide a final answer to the user."""
     return {"answer": answer, "tools_used": tools_used}
